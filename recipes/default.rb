@@ -17,48 +17,58 @@
 # limitations under the License.
 #
 
+include_recipe 'apt'
 include_recipe 'git'
 
-directory "#{node['devstack']['dest']}" do
-  owner "root"
-  group "root"
+directory "#{node['devstack']['localrc']['dest']}" do
   mode 00755
-  action :create
   recursive true
 end
 
-git "#{node['devstack']['dest']}/devstack" do
-  repository "https://github.com/openstack-dev/devstack.git"
-  reference "master"
+git "#{node['devstack']['localrc']['dest']}/devstack" do
+  repository node['devstack']['repository']
+  reference node['devstack']['reference']
 end
 
 template "localrc" do
-   path "#{node['devstack']['dest']}/devstack/localrc"
-   owner "root"
-   group "root"
-   mode 00644
+  path "#{node['devstack']['localrc']['dest']}/devstack/localrc"
+  mode 00644
 end
 
 directory "/root/.pip" do
   owner "root"
   group "root"
   mode 00644
-  action :create
   recursive true
 end
 
 template "pip.conf" do
-   path "/root/.pip/pip.conf"
-   owner "root"
-   group "root"
-   mode 00644
+  path "/root/.pip/pip.conf"
+  mode 00644
 end
 
-execute "apt-get-update" do
-  command "apt-get update"
+stack_user = node['devstack']['localrc']['stack_user'] || 'stack'
+
+execute "bash #{node['devstack']['localrc']['dest']}/devstack/tools/create-stack-user.sh" do
+  not_if "id #{stack_user}"
+end
+
+execute "unstack.sh" do
+  user stack_user
+  command "./unstack.sh"
+  environment( 
+    'HOME' => node['devstack']['localrc']['dest']
+  )
+  cwd "#{node['devstack']['localrc']['dest']}/devstack"
+  only_if { node['devstack']['unstack'] }
 end
 
 execute "stack.sh" do
-  command "./stack.sh > /var/log/devstack.log"
-  cwd "#{node['devstack']['dest']}/devstack"
+  user stack_user
+  command "./stack.sh"
+  environment( 
+    'HOME' => node['devstack']['localrc']['dest']
+  )
+  cwd "#{node['devstack']['localrc']['dest']}/devstack"
+  only_if { node['devstack']['unstack'] or not ::File.exists? "#{node['devstack']['localrc']['dest']}/devstack/stack-screenrc" }
 end

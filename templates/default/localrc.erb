@@ -1,7 +1,7 @@
-HOST_IP=<%= node['devstack']['host-ip'] %>
-DATABASE_PASSWORD=<%= node['devstack']['database-password'] %>
-RABBIT_PASSWORD=<%= node['devstack']['rabbit-password'] %>
-SERVICE_TOKEN=<%= node['devstack']['service-token'] %>
-SERVICE_PASSWORD=<%= node['devstack']['service-password'] %>
-ADMIN_PASSWORD=<%= node['devstack']['admin-password'] %>
-DEST=<%= node['devstack']['dest'] %>
+<% node['devstack']['localrc'].each do |key, value| %>
+<%   if value.kind_of? Array -%>
+<%=    "#{key.gsub(/-/,'_').upcase}=#{value.join(',')}" %>
+<%   else %>
+<%=    "#{key.gsub(/-/,'_').upcase}=#{ (value == true) ? "True" : value}" %>
+<%   end -%>
+<% end %>
